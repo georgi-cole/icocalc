@@ -1,0 +1,104 @@
+/*
+ * mobile.css — mobile UX helpers
+ *
+ * Import this stylesheet once near the top of your app entry point:
+ *   import '../styles/mobile.css'
+ *
+ * Breakpoint convention: ≤ 640 px is treated as "mobile".
+ */
+
+/* ── Touch targets ──────────────────────────────────────────────────────── */
+/*
+ * WCAG 2.5.5 recommends at least 44×44 px touch targets.
+ * Apply .touch-target to any interactive element that is smaller by default.
+ */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  /* Buttons and links automatically get a larger tap area on mobile */
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  /* Inputs and selects are easier to tap */
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 1rem; /* Prevents iOS auto-zoom on focus */
+  }
+}
+
+/* ── Card spacing ───────────────────────────────────────────────────────── */
+/*
+ * .card — base card component styling with comfortable mobile padding.
+ */
+.card {
+  background: var(--color-surface, #ffffff);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+@media (max-width: 640px) {
+  .card {
+    border-radius: 0.5rem;
+    padding: 0.875rem;
+    /* Full-bleed cards on narrow screens */
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+  }
+
+  /* Stack card grids vertically on mobile */
+  .card-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 641px) {
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* ── List / entry spacing ───────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .entry-list-item {
+    padding: 0.75rem 1rem;
+  }
+
+  .entry-list-item + .entry-list-item {
+    margin-top: 0.5rem;
+  }
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Slightly smaller headings so they don't overflow narrow viewports */
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1.1rem; }
+}
+
+/* ── Safe-area insets (notch / home-indicator) ──────────────────────────── */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
