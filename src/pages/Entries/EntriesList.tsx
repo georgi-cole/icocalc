@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Entry } from '../../models'
 import {
@@ -7,6 +7,7 @@ import {
   softDeleteEntry,
   restoreEntry,
 } from '../../services/entriesService'
+import { subscribeToEntries } from '../../services/realtime'
 import ConfirmModal from '../../components/ConfirmModal'
 import Filters, { FiltersState } from '../../components/Filters'
 import TimelineItem from '../../components/TimelineItem'
@@ -26,6 +27,11 @@ export default function EntriesList() {
   const [view, setView] = useState<'timeline' | 'table'>('timeline')
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const showDeletedRef = useRef(filters.showDeleted)
+
+  useEffect(() => {
+    showDeletedRef.current = filters.showDeleted
+  }, [filters.showDeleted])
 
   const loadEntries = useCallback(async () => {
     setLoading(true)
@@ -42,9 +48,49 @@ export default function EntriesList() {
 
   useEffect(() => {
     loadEntries()
-    // Polling placeholder — replaced by realtime in PR4
-    const interval = setInterval(loadEntries, 30_000)
-    return () => clearInterval(interval)
+
+    const subscription = subscribeToEntries(({ eventType, entry, oldEntry }) => {
+      const showDeleted = showDeletedRef.current
+
+      if (eventType === 'INSERT' && entry) {
+        // Only prepend if the entry matches the current view (not soft-deleted)
+        if (!showDeleted && !entry.deleted_at) {
+          setEntries((prev) =>
+            prev.some((e) => e.id === entry.id) ? prev : [entry, ...prev],
+          )
+        }
+      } else if (eventType === 'UPDATE' && entry) {
+        setEntries((prev) => {
+          const exists = prev.some((e) => e.id === entry.id)
+          if (showDeleted) {
+            // In deleted view: upsert if entry is now deleted, remove if restored
+            if (entry.deleted_at) {
+              return exists
+                ? prev.map((e) => (e.id === entry.id ? entry : e))
+                : [entry, ...prev]
+            } else {
+              return prev.filter((e) => e.id !== entry.id)
+            }
+          } else {
+            // In active view: upsert if still active, remove if soft-deleted
+            if (!entry.deleted_at) {
+              return exists
+                ? prev.map((e) => (e.id === entry.id ? entry : e))
+                : [entry, ...prev]
+            } else {
+              return prev.filter((e) => e.id !== entry.id)
+            }
+          }
+        })
+      } else if (eventType === 'DELETE') {
+        const id = oldEntry?.id ?? entry?.id
+        if (id) {
+          setEntries((prev) => prev.filter((e) => e.id !== id))
+        }
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [loadEntries])
 
   const handleDelete = (id: string) => setConfirmId(id)
