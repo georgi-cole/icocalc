@@ -24,31 +24,15 @@ jobs:
 
       - name: Build
         env:
-          REACT_APP_SUPABASE_URL: ${{ secrets.REACT_APP_SUPABASE_URL }}
-          REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.REACT_APP_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
 
-      # Detect the build output folder.
-      # Create React App outputs to ./build; Vite outputs to ./dist.
-      # The variable PUBLISH_DIR is set to whichever folder exists after the
-      # build step so the deploy action always publishes the correct folder.
-      - name: Detect build output folder
-        id: detect_dir
-        run: |
-          if [ -d "./build" ]; then
-            echo "PUBLISH_DIR=./build" >> "$GITHUB_ENV"
-            echo "::notice::Detected build output: ./build"
-          elif [ -d "./dist" ]; then
-            echo "PUBLISH_DIR=./dist" >> "$GITHUB_ENV"
-            echo "::notice::Detected build output: ./dist"
-          else
-            echo "ERROR: Neither ./build nor ./dist directory was found after the build step."
-            echo "Check that 'npm run build' succeeded and that the output folder matches one of these paths."
-            exit 1
-          fi
+      - name: Copy 404.html to dist
+        run: cp 404.html dist/404.html
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ${{ env.PUBLISH_DIR }}
+          publish_dir: ./dist

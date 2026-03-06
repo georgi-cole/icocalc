@@ -1,15 +1,15 @@
 /**
- * exportXlsx — client-side XLSX export helper using SheetJS (xlsx).
+ * exportXlsx — client-side XLSX export helper using ExcelJS.
  *
  * Usage:
  *   import { exportToXlsx } from './exportXlsx'
- *   exportToXlsx(rows, 'my-export')
+ *   await exportToXlsx(rows, 'my-export')
  *
- * Install SheetJS:
- *   npm install xlsx
+ * Install ExcelJS:
+ *   npm install exceljs
  */
 
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 
 /**
  * Convert an array of plain objects to an XLSX file and trigger a browser download.
@@ -17,14 +17,29 @@ import * as XLSX from 'xlsx'
  * @param rows     - Array of objects whose keys become column headers.
  * @param filename - Desired filename WITHOUT the .xlsx extension.
  */
-export function exportToXlsx<T extends Record<string, unknown>>(
+export async function exportToXlsx<T extends Record<string, unknown>>(
   rows: T[],
   filename: string,
-): void {
-  const worksheet = XLSX.utils.json_to_sheet(rows)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Export')
-  XLSX.writeFile(workbook, `${filename}.xlsx`)
+): Promise<void> {
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet('Export')
+
+  if (rows.length > 0) {
+    const headers = Object.keys(rows[0])
+    worksheet.columns = headers.map((key) => ({ header: key, key }))
+    worksheet.addRows(rows)
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `${filename}.xlsx`
+  anchor.click()
+  URL.revokeObjectURL(url)
 }
 
 /**
@@ -34,9 +49,23 @@ export function exportToXlsx<T extends Record<string, unknown>>(
  * @param rows - Array of objects whose keys become column headers.
  * @returns Base-64 encoded XLSX binary.
  */
-export function toXlsxBase64<T extends Record<string, unknown>>(rows: T[]): string {
-  const worksheet = XLSX.utils.json_to_sheet(rows)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Export')
-  return XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' }) as string
+export async function toXlsxBase64<T extends Record<string, unknown>>(
+  rows: T[],
+): Promise<string> {
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet('Export')
+
+  if (rows.length > 0) {
+    const headers = Object.keys(rows[0])
+    worksheet.columns = headers.map((key) => ({ header: key, key }))
+    worksheet.addRows(rows)
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const bytes = new Uint8Array(buffer as ArrayBuffer)
+  let binary = ''
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
 }

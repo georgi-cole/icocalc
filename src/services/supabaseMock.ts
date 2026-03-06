@@ -228,7 +228,7 @@ class MockQueryBuilder {
   then(
     resolve: (result: QueryResult) => void,
     _reject?: (err: unknown) => void,
-  ): Promise<QueryResult> {
+  ): Promise<void> {
     return Promise.resolve(this._execute()).then(resolve, _reject)
   }
 
@@ -297,9 +297,9 @@ class MockQueryBuilder {
       })
 
       if (this._returnSingle) {
-        return { data: updated ? { ...updated } : null, error: null }
+        return { data: updated ? { ...(updated as Row) } : null, error: null }
       }
-      return { data: updated ? [{ ...updated }] : [], error: null }
+      return { data: updated ? [{ ...(updated as Row) }] : [], error: null }
     }
 
     // ── SELECT ──
