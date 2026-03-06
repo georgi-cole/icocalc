@@ -1,6 +1,8 @@
 # IcoCalc
 
-IcoCalc is a Supabase-backed calculator/entries app built with React and TypeScript.
+IcoCalc is a Supabase-backed renovation ledger app built with **Vite + React + TypeScript + Tailwind CSS**.
+
+🌐 **Live app:** https://georgi-cole.github.io/icocalc/
 
 ---
 
@@ -15,7 +17,7 @@ IcoCalc is a Supabase-backed calculator/entries app built with React and TypeScr
 
 ### Option A — Mock mode (no Supabase required)
 
-You can run the app immediately without any Supabase credentials.  In mock mode
+You can run the app immediately without any Supabase credentials. In mock mode
 the app uses an in-memory store pre-seeded with sample data so every page
 renders and basic create / list / edit flows work.
 
@@ -26,10 +28,10 @@ renders and basic create / list / edit flows work.
 git clone https://github.com/georgi-cole/icocalc.git
 cd icocalc
 npm install
-npm start        # open http://localhost:3000
+npm run dev     # open http://localhost:5173/icocalc/
 ```
 
-No `.env.local` file is needed.  The browser console will show:
+No `.env.local` file is needed. The browser console will show:
 
 ```
 [supabaseClient] … Running in MOCK MODE with in-memory data.
@@ -62,28 +64,29 @@ cp .env.example .env.local
 
 Open `.env.local` and replace the placeholder values:
 
-```
-REACT_APP_SUPABASE_URL=https://<your-project-ref>.supabase.co
-REACT_APP_SUPABASE_ANON_KEY=<your-anon-key>
+```env
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-anon-key>
 ```
 
 > **Where to find these values**
 > 1. Log in to [supabase.com](https://supabase.com/) and open your project.
 > 2. Go to **Settings → API**.
-> 3. Copy the **Project URL** → `REACT_APP_SUPABASE_URL`.
-> 4. Copy the **`anon` / `public`** key → `REACT_APP_SUPABASE_ANON_KEY`.
+> 3. Copy the **Project URL** → `VITE_SUPABASE_URL`.
+> 4. Copy the **`anon` / `public`** key → `VITE_SUPABASE_ANON_KEY`.
 >
 > ⚠️ Never commit your `.env.local` or any file containing real credentials.
+>
+> **Note:** Vite only exposes env vars prefixed with `VITE_` to browser code
+> (via `import.meta.env.VITE_*`). Do **not** use `REACT_APP_*` variables.
 
 #### 4. Start the development server
 
 ```bash
-npm start
+npm run dev
 ```
 
-The app will be available at <http://localhost:3000>.
-
-> **Note:** If `package.json` uses a different start script (e.g. `dev` for Vite projects), run `npm run dev` instead.
+The app will be available at <http://localhost:5173/icocalc/>.
 
 ---
 
@@ -93,12 +96,12 @@ The app will be available at <http://localhost:3000>.
 npm run build
 ```
 
-The production build is output to `./build` (Create React App) or `./dist` (Vite).
+The production build is output to `./dist`.
 
 ### 6. Preview the production build locally
 
 ```bash
-npx serve -s build
+npm run preview
 ```
 
 ---
@@ -109,30 +112,19 @@ Pushes to the `main` branch automatically trigger the
 `.github/workflows/deploy-to-gh-pages.yml` workflow, which builds the app and
 pushes the output to the `gh-pages` branch.
 
-### Build-output folder detection
-
-The workflow automatically detects whether the build produced `./build`
-(Create React App) or `./dist` (Vite) and publishes the correct folder.
-You do **not** need to edit the workflow when switching bundlers — the
-`Detect build output folder` step handles this.
-
-To inspect or re-run a workflow:
-
-1. Go to the **Actions** tab in the repository.
-2. Select the **Build and deploy to GitHub Pages** workflow.
-3. Click a run to see per-step logs (expand the `Detect build output folder`
-   step to confirm which directory was published).
-4. Click **Re-run jobs → Re-run all jobs** to trigger a fresh run manually.
+The workflow publishes `./dist` (Vite's default output directory) to the
+`gh-pages` branch. A `404.html` redirect file is included so SPA client-side
+routing works on GitHub Pages.
 
 ### Required repository secrets
 
 Before the workflow can run successfully, add the following secrets to the
 repository (**Settings → Secrets and variables → Actions → New repository secret**):
 
-| Secret name                  | Value                                         |
-| ---------------------------- | --------------------------------------------- |
-| `REACT_APP_SUPABASE_URL`     | Your Supabase project URL                     |
-| `REACT_APP_SUPABASE_ANON_KEY`| Your Supabase `anon` / `public` key           |
+| Secret name              | Value                              |
+| ------------------------ | ---------------------------------- |
+| `VITE_SUPABASE_URL`      | Your Supabase project URL          |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase `anon` / `public` key|
 
 > If the secrets are absent the build still succeeds (mock mode is used), but
 > the deployed app will run with in-memory data only.
@@ -146,16 +138,30 @@ repository (**Settings → Secrets and variables → Actions → New repository 
 2. Under **Source**, select **Deploy from a branch**.
 3. Choose the `gh-pages` branch and `/ (root)` folder, then click **Save**.
 
+The live URL will be: **https://georgi-cole.github.io/icocalc/**
+
+---
+
+## Supabase Auth & Row Level Security notes
+
+- The sign-in form uses `supabase.auth.signInWithPassword` (email + password).
+- Your Supabase project must have **Email** authentication enabled
+  (Dashboard → Authentication → Providers).
+- For the `entries` table inserts to work, ensure your Supabase project has
+  appropriate Row Level Security (RLS) policies allowing authenticated users to
+  `SELECT` and `INSERT` rows.
+- CORS is handled automatically by the Supabase JS client.
+
 ---
 
 ## Troubleshooting
 
-### `REACT_APP_SUPABASE_*` variables are missing
+### `VITE_SUPABASE_*` variables are missing
 
 **Symptom:** The browser console shows
 `[supabaseClient] … Running in MOCK MODE with in-memory data.`
 
-This is expected when no `.env.local` is present.  The app still works using
+This is expected when no `.env.local` is present. The app still works using
 sample in-memory data (see *Mock mode* above).
 
 **To switch to a real Supabase project:** Create `.env.local` with both
@@ -168,11 +174,9 @@ variables set (see *Option B* above).
 
 ### GitHub Pages shows a 404 or blank page
 
-**Possible causes and fixes:**
-
 | Cause | Fix |
 | ----- | ---- |
-| No build artifacts committed to `gh-pages` | Verify that the workflow ran successfully and that the `gh-pages` branch exists. |
-| Pages source not configured | Go to **Settings → Pages** and set the source to the `gh-pages` branch. |
-| Wrong `publish_dir` in workflow | The workflow now auto-detects `./build` or `./dist`. Check the `Detect build output folder` step in the Actions log. |
-| App served from a sub-path | Set the `homepage` field in `package.json` (CRA) or `base` in `vite.config.ts` to the repository sub-path (e.g. `/icocalc`). |
+| No build artifacts on `gh-pages` | Verify the workflow ran and `gh-pages` branch exists |
+| Pages source not configured | Go to **Settings → Pages** and set source to `gh-pages` branch |
+| App served from a sub-path | `base: '/icocalc/'` is already set in `vite.config.ts` |
+| SPA routing 404 | `404.html` redirect is included in every build automatically |

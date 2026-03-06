@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../services/supabaseClient'
-import { User } from '@supabase/supabase-js'
+import { User, AuthChangeEvent, Session } from '@supabase/supabase-js'
 import toast from 'react-hot-toast'
 import { ensureMember } from '../services/membersService'
 
@@ -28,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     getUser()
 
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((authEvent: AuthChangeEvent, session: Session | null) => {
       const newUser = session?.user ?? null
       setUser(newUser)
 
@@ -36,13 +36,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (newUser?.id) {
         ensureMember(newUser.id)
         // Friendly toast on first time signin could be added, but keep it unobtrusive
-        if (event === 'SIGNED_IN') {
+        if (authEvent === 'SIGNED_IN') {
           toast.success('Welcome — your membership was created')
         }
       }
 
       // Optionally show a toast for sign out or other events
-      if (event === 'SIGNED_OUT') {
+      if (authEvent === 'SIGNED_OUT') {
         toast('Signed out')
       }
     })
