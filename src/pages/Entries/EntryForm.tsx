@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { createEntry, fetchEntryById, updateEntry } from '../../services/entriesService'
+import { fetchEntryHistory, AuditRow } from '../../services/auditService'
 import { supabase } from '../../services/supabaseClient'
+import DiffViewer from '../../components/DiffViewer'
 import toast from 'react-hot-toast'
 
 interface FormState {
@@ -45,6 +47,9 @@ export default function EntryForm() {
   const [loading, setLoading] = useState(false)
   const [initializing, setInitializing] = useState(true)
   const [memberId, setMemberId] = useState<string>('')
+  const [history, setHistory] = useState<AuditRow[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+  const [selectedHistoryRow, setSelectedHistoryRow] = useState<AuditRow | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -74,6 +79,13 @@ export default function EntryForm() {
 
     init()
   }, [id, isEditing, navigate])
+
+  useEffect(() => {
+    if (!isEditing || !id) return
+    fetchEntryHistory(id).then(({ data }) => {
+      setHistory(data ?? [])
+    })
+  }, [id, isEditing])
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -189,8 +201,101 @@ export default function EntryForm() {
           >
             Cancel
           </button>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={() => { setShowHistory((v) => !v); setSelectedHistoryRow(null) }}
+              className="ml-auto text-sm font-medium text-gray-500 hover:text-gray-700"
+            >
+              {showHistory ? 'Hide history' : 'Show history'}
+            </button>
+          )}
         </div>
       </form>
+
+      {isEditing && showHistory && (
+        <div className="mt-8">
+          <h2 className="text-base font-semibold text-gray-800 mb-3">Entry history</h2>
+          {history.length === 0 ? (
+            <p className="text-sm text-gray-500">No history available.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Time</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Action</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-600">Actor ID</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {history.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() =>
+                        setSelectedHistoryRow(
+                          selectedHistoryRow?.id === row.id ? null : row
+                        )
+                      }
+                      className={`cursor-pointer hover:bg-blue-50 transition-colors ${
+                        selectedHistoryRow?.id === row.id ? 'bg-blue-100' : ''
+                      }`}
+                    >
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                        {new Date(row.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${
+                            row.action === 'INSERT'
+                              ? 'bg-green-100 text-green-700'
+                              : row.action === 'UPDATE'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : row.action === 'DELETE'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {row.action}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                        {row.actor_id ?? '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {selectedHistoryRow && (
+            <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                Diff — {selectedHistoryRow.action} at{' '}
+                {new Date(selectedHistoryRow.created_at).toLocaleString()}
+              </h3>
+              <DiffViewer
+                oldValue={
+                  selectedHistoryRow.payload?.old &&
+                  typeof selectedHistoryRow.payload.old === 'object'
+                    ? (selectedHistoryRow.payload.old as Record<string, unknown>)
+                    : null
+                }
+                newValue={
+                  selectedHistoryRow.payload?.new &&
+                  typeof selectedHistoryRow.payload.new === 'object'
+                    ? (selectedHistoryRow.payload.new as Record<string, unknown>)
+                    : selectedHistoryRow.payload &&
+                      typeof selectedHistoryRow.payload === 'object'
+                    ? (selectedHistoryRow.payload as Record<string, unknown>)
+                    : null
+                }
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
